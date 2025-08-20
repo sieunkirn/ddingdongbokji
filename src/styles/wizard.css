@@ -1,0 +1,159 @@
+/* ============================= */
+/* 고객 정보 받기        */
+/* ============================= */
+.page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    background: #fff;
+    box-sizing: border-box;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+
+/* 페이지 타이틀 */
+.page h2,
+.page-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 20px 0;
+    text-align: center;
+    color: #222;
+}
+
+/* ============================= */
+/* 입력 필드 (input, select)     */
+/* ============================= */
+.page input,
+.page select {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 15px;
+    box-sizing: border-box;
+}
+
+/* ============================= */
+/* 버튼 스타일                   */
+/* ============================= */
+.btn {
+    display: inline-block;
+    padding: 12px 18px;
+    margin: 6px 4px 0 0;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    color: #333;
+}
+
+/* 버튼 상태 */
+.btn:hover {
+    background: #f0f0f0;
+}
+.btn:disabled {
+    background: #ccc;
+    border-color: #ccc;
+    color: #fff;
+    cursor: not-allowed;
+}
+
+/* Primary 버튼 */
+.btn--primary {
+    background: #689f38;
+    border-color: #689f38;
+    color: #fff;
+}
+.btn--primary:hover {
+    background: #5a8d31;
+}
+
+/* Ghost 버튼 */
+.btn--ghost {
+    background: #fff;
+    border-color: #ccc;
+    color: #333;
+}
+.btn--ghost:hover {
+    background: #f5f5f5;
+}
+
+/* Large 버튼 (다음) */
+.btn--large {
+    display: block;
+    width: 100%;
+    margin-top: 24px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* 버튼 그룹 (예/아니오) */
+.btn-group {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0 20px;
+}
+.btn-group .btn {
+    flex: 1;
+}
+
+/* ============================= */
+/* 주소 검색 모달                */
+/* ============================= */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+}
+.modal__body {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ============================= */
+/* 기타 요소                     */
+/* ============================= */
+label {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 8px 0 4px;
+    display: block;
+}
+
+.spacer {
+    height: 16px;
+}
+
+/* 페이지 헤더 */
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+/* 이전 버튼 */
+.back-button {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+    color: #333;
+}
+.back-button:hover {
+    color: #689f38;
+}

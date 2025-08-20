@@ -1,0 +1,165 @@
+
+:root {
+    --primary: #8EBB6A;
+    --primary-light: #dcfce7;
+    --secondary: #C7C7C7;
+    --background: #ffffff;
+    --surface: #f9fafb;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --border: #e5e7eb;
+    --error: #ef4444;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+    /* 시작하기 버튼 전용 색상 */
+    --start-button-bg: #83634E;
+    --start-button-hover: #4a3f35;
+    --start-button-text: #FFFFFF;
+}
+
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body, #root {
+    height: 100%;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--surface);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.app-container {
+    max-width: 420px;
+    margin: 0 auto;
+    background-color: var(--background);
+    min-height: 100vh;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden; /* 이미지 오버플로우 방지 */
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.page-content {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.page-footer {
+    padding: 16px 20px 32px;
+    background-color: var(--background);
+    border-top: 1px solid var(--border);
+}
+
+.page-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
+    text-align: center;
+}
+
+/*:root {*/
+/*    --primary: #22c55e;*/
+/*    --primary-light: #dcfce7;*/
+/*    --secondary: #6b7280;*/
+/*    --background: #ffffff;*/
+/*    --surface: #f9fafb;*/
+/*    --text-primary: #111827;*/
+/*    --text-secondary: #6b7280;*/
+/*    --border: #e5e7eb;*/
+/*    --error: #ef4444;*/
+/*    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);*/
+
+/*    !* 시작하기 버튼 전용 색상 *!*/
+/*    --start-button-bg: #594D3F;*/
+/*    --start-button-hover: #4a3f35;*/
+/*    --start-button-text: #FFFFFF;*/
+/*}*/
+
+
+/** {*/
+/*    margin: 0;*/
+/*    padding: 0;*/
+/*    box-sizing: border-box;*/
+/*}*/
+
+/*html, body, #root {*/
+/*    height: 100%;*/
+/*}*/
+
+/*body {*/
+/*    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',*/
+/*    'Helvetica Neue', Arial, sans-serif;*/
+/*    background-color: var(--surface);*/
+/*    color: var(--text-primary);*/
+/*    line-height: 1.5;*/
+/*}*/
+
+/*.app-container {*/
+/*    max-width: 420px;*/
+/*    margin: 0 auto;*/
+/*    background-color: var(--background);*/
+/*    min-height: 100vh;*/
+/*    box-shadow: var(--shadow);*/
+/*    position: relative;*/
+/*    overflow: hidden; !* 이미지 오버플로우 방지 *!*/
+/*}*/
+
+/*.page {*/
+/*    display: flex;*/
+/*    flex-direction: column;*/
+/*    min-height: 100vh;*/
+/*}*/
+
+/*.page-content {*/
+/*    flex: 1;*/
+/*    padding: 20px;*/
+/*    display: flex;*/
+/*    flex-direction: column;*/
+/*    gap: 24px;*/
+/*}*/
+
+/*.page-footer {*/
+/*    padding: 16px 20px 32px;*/
+/*    background-color: var(--background);*/
+/*    border-top: 1px solid var(--border);*/
+/*}*/
+
+/*.page-title {*/
+/*    font-size: 16px;*/
+/*    font-weight: 600;*/
+/*    color: var(--text-primary);*/
+/*    margin: 0;*/
+/*    flex: 1;*/
+/*    text-align: center;*/
+/*}*/
+
+/* 홈/추천복지/마이 페이지 공통 컨텐츠 */
+.page-content {
+    position: relative;
+    z-index: 2;
+    background: #fff;
+    border-radius: 24px 24px 0 0;   /* 상단 둥글게 */
+    margin-top: -24px;              /* 헤더와 겹치게 */
+    padding: 16px;
+    width: 100%;
+    min-height: calc(100vh - 56px); /* 헤더 제외 꽉 차게 */
+    box-shadow: 0 -1px 0 rgba(0,0,0,0.03);
+}
