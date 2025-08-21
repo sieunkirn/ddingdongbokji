@@ -1,11 +1,10 @@
-
 // pages/ChatbotPage.jsx
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import "../../styles/components.css";
+import "../../styles/chatbot.css"; // 아래 CSS 파일
 
 /** ---------------------------
- *  Web Speech API: SpeechRecognition 래퍼
+ *  Web Speech API: 안전 래퍼
  *  --------------------------- */
 function makeRecognition() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -13,490 +12,286 @@ function makeRecognition() {
     const rec = new SR();
     rec.lang = "ko-KR";
     rec.interimResults = true;
-    rec.continuous = false; // 브라우저별 자동종료 보완은 onend에서
+    rec.continuous = false; // 최종문장 단위로만 종료
     return rec;
 }
 
 /** ---------------------------
- *  Silence Timer (침묵 감지)
+ *  유틸: 시각용 시간 문자열
  *  --------------------------- */
-function useSilenceTimer(callback, ms = 1100) {
-    const timer = useRef(null);
-    const reset = useCallback(() => {
-        clear();
-        timer.current = setTimeout(callback, ms);
-    }, [callback, ms]);
-    const clear = useCallback(() => {
-        if (timer.current) {
-            clearTimeout(timer.current);
-            timer.current = null;
-        }
-    }, []);
-    return { reset, clear };
-}
+const nowTime = () => {
+    const d = new Date();
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const isPM = hours >= 12;
+    const hh12 = hours % 12 === 0 ? 12 : hours % 12;
+    const mm = minutes.toString().padStart(2, "0");
+    return `${isPM ? "오후" : "오전"} ${hh12}:${mm}`;
+};
 
-/** ---------------------------
- *  Beep (시작/종료 피드백)
- *  --------------------------- */
-function useBeep() {
-    const ctxRef = useRef(null);
-    const init = () => {
-        if (!ctxRef.current) {
-            try {
-                ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            } catch {}
-        }
-    };
-    const beep = (freq = 880, dur = 0.06, type = "sine") => {
-        init();
-        const ctx = ctxRef.current;
-        if (!ctx) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = type;
-        osc.frequency.value = freq;
-        gain.gain.value = 0.05;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        setTimeout(() => {
-            osc.stop();
-            osc.disconnect();
-            gain.disconnect();
-        }, dur * 1000);
-    };
-    return { beep };
-}
-
-/** ---------------------------
- *  TTS (선택적 읽어주기)
- *  --------------------------- */
-function useTTS() {
-    const speak = (text, lang = "ko-KR") => {
-        if (!window.speechSynthesis) return;
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = lang;
-        utter.rate = 1.0;
-        utter.pitch = 1.0;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utter);
-    };
-    const stop = () => {
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-    };
-    return { speak, stop };
-}
-
-/** ---------------------------
- *  Auto scroll to bottom
- *  --------------------------- */
-function useAutoScroll(deps) {
-    const areaRef = useRef(null);
-    useEffect(() => {
-        const el = areaRef.current;
-        if (!el) return;
-        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    }, deps);
-    return areaRef;
-}
-
-/** ---------------------------
- *  메시지 유틸
- *  --------------------------- */
-function uid() {
-    return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
-/** ===========================
- *   ChatbotPage
- *  =========================== */
 export default function ChatbotPage() {
     const navigate = useNavigate();
 
-    // 음성 인식기/상태
-    const recRef = useRef(null);
-    const [supported, setSupported] = useState(true);
-    const [listening, setListening] = useState(false); // 사용자 토글 상태
-    const [engineActive, setEngineActive] = useState(false); // 실제 엔진 동작
-    const [interim, setInterim] = useState("");
-    const [finalBuf, setFinalBuf] = useState("");
-
-    const { beep } = useBeep();
-    const { speak, stop: stopTTS } = useTTS();
-
-    // 침묵시 자동 전송
-    const autoSendCb = useCallback(() => {
-        const text = finalBuf.trim();
-        if (text) {
-            autoSend(text);
-            setFinalBuf("");
-        }
-    }, [finalBuf]);
-    const { reset: resetSilence, clear: clearSilence } = useSilenceTimer(autoSendCb, 1100);
-
-    // 메시지
-    const [messages, setMessages] = useState([
+    // 메시지 리스트: { id, role: 'bot'|'user', text, time }
+    const [messages, setMessages] = useState(() => [
         {
-            id: uid(),
-            sender: "bot",
+            id: crypto.randomUUID(),
+            role: "bot",
             text:
-                '안녕하세요! 복지 도우미 띵동이에요. 마이크를 켜고 질문하세요.\n예시: "신청 가능한 복지혜택 알려줘"',
+                '안녕하세요! 복지 도우미 뚱똥이에요. 버튼을 눌러 음성으로 질문해보세요.\n예시: "신청 가능한 복지혜택 알려줘"',
+            time: nowTime(),
         },
     ]);
 
-    // 빠른질문 칩
-    const quickChips = [
-        "문화누리카드 조건 알려줘",
-        "내 지역 복지 신규 뭐 있어?",
-        "기초연금 언제부터 가능?",
-        "장애인 활동지원 신청 방법",
-    ];
+    // 음성 인식 관련 상태
+    const [stage, setStage] = useState("idle"); // idle | listening | confirm | sending
+    const [partial, setPartial] = useState(""); // 듣는 중 임시 문장
+    const [finalText, setFinalText] = useState(""); // 확정된 문장
 
-    /** 인식기 초기화 */
+    // 마이크 객체
+    const recRef = useRef(null);
+
+    // 백엔드 주소
+    const API_BASE = useMemo(
+        () => import.meta.env.VITE_API_BASE?.trim() || "https://silvercare-backend.onrender.com",
+        []
+    );
+
+    // 최초 마운트 시 인식기 준비
     useEffect(() => {
-        const rec = makeRecognition();
-        if (!rec) {
-            setSupported(false);
-            return;
-        }
-
-        rec.onstart = () => {
-            setEngineActive(true);
-            setInterim("");
-        };
-
-        rec.onresult = (e) => {
-            let interimText = "";
-            let finalText = "";
-            for (let i = e.resultIndex; i < e.results.length; i++) {
-                const seg = e.results[i][0].transcript.trim();
-                if (e.results[i].isFinal) finalText += seg + " ";
-                else interimText += seg + " ";
-            }
-            if (interimText) setInterim(interimText);
-
-            if (finalText) {
-                setFinalBuf((prev) => (prev + " " + finalText).trim());
-                resetSilence();
-            }
-        };
-
-        rec.onerror = (e) => {
-            // 마이크 권한/네트워크 등 오류
-            setEngineActive(false);
-            setInterim("");
-            // 너무 공격적 재시작 방지 + 사용자 의지가 있는 경우만
-            if (listening) {
-                setTimeout(() => {
-                    try {
-                        rec.start();
-                    } catch {}
-                }, 300);
-            }
-        };
-
-        rec.onend = () => {
-            setEngineActive(false);
-            setInterim("");
-            // 사용자가 끄지 않았으면 자동 재시작(모바일 보호)
-            if (listening) {
-                try {
-                    rec.start();
-                } catch {}
-            }
-        };
-
-        recRef.current = rec;
+        recRef.current = makeRecognition();
         return () => {
             try {
-                rec.abort();
+                recRef.current?.stop();
             } catch {}
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [listening]); // listening이 변할 때만 반응
-
-    /** 탭 전환/잠금 시 정리 */
-    useEffect(() => {
-        const handleVis = () => {
-            if (document.hidden) stopMic(true);
-        };
-        window.addEventListener("visibilitychange", handleVis);
-        return () => window.removeEventListener("visibilitychange", handleVis);
     }, []);
-
-    /** 자동 스크롤 */
-    const areaRef = useAutoScroll([messages, interim, engineActive]);
-
-    /** 메시지 액션 */
-    const handleCopy = async (text) => {
-        try {
-            await navigator.clipboard.writeText(text);
-        } catch {}
-    };
-    const handleSpeak = (text) => speak(text);
-    const handleDelete = (id) => {
-        setMessages((prev) => prev.filter((m) => m.id !== id));
-    };
-
-    /** 네트워크 스트리밍 호출 (가능하면) + 데모 폴백 */
-    const callApiStream = async (text, onChunk) => {
-        try {
-            const base = import.meta.env.VITE_API_BASE_URL || 'https://d32cc7c8eb4b.ngrok-free.app';
-            const res = await fetch(`${base}/api/chat/stream`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/plain'
-                },
-                body: JSON.stringify({ text })
-            });
-            if (res.ok && res.body) {
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let done = false;
-                while (!done) {
-                    const { value, done: doneReading } = await reader.read();
-                    done = doneReading;
-                    const chunkValue = value ? decoder.decode(value, { stream: !done }) : '';
-                    if (chunkValue) onChunk(chunkValue);
-                }
-                return;
-            }
-        } catch (e) {
-            // 서버 미구현/네트워크 에러 시 데모로 대체
-        }
-
-        // 데모 스트리밍 폴백
-        const demo = '현재 신청 가능한 주요 복지: 문화누리카드(기초생활·차상위), 기초연금, 장애인 활동지원 등입니다.\n"지역/연령/가구상황"을 알려주시면 더 정확히 추천해드릴게요.';
-        for (const token of chunkTokens(demo)) {
-            onChunk(token);
-            // 살짝 타자치는 느낌
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((r) => setTimeout(r, 18));
-        }
-    };
-
-    // 간단한 토큰 분할기(문장부호/공백 유지)
-    function* chunkTokens(s) {
-        const parts = s.match(/\S+\s*|\s+/g) || [s];
-        for (const p of parts) yield p;
-    }
-
-    /** 전송 (스트리밍 응답) */
-    const autoSend = async (text) => {
-        const clean = text.trim();
-        if (!clean) return;
-
-        // 사용자 메시지 push
-        const userId = uid();
-        setMessages((prev) => [...prev, { id: userId, sender: "user", text: clean }]);
-        // 스트리밍용 빈 봇 메시지 추가
-        const botId = uid();
-        setMessages((prev) => [...prev, { id: botId, sender: "bot", text: "" }]);
-
-        const append = (delta) => {
-            setMessages((prev) =>
-                prev.map((m) => (m.id === botId ? { ...m, text: (m.text || "") + delta } : m))
-            );
-        };
-
-        try {
-            await callApiStream(clean, append);
-        } catch (e) {
-            append("오류가 발생했어요. 네트워크 상태를 확인 후 다시 시도해 주세요.");
-        }
-    };
-
-    /** 마이크 켜기 */
-    const startMic = (fromPTT = false) => {
-        if (!recRef.current) return;
-        setListening(true);
-        stopTTS(); // 말 겹침 방지
-        clearSilence();
-        setFinalBuf("");
-        setInterim("");
-        try {
-            recRef.current.start();
-            if (!fromPTT) beep(1200, 0.05, "sine");
-        } catch {}
-    };
-
-    /** 마이크 끄기 */
-    const stopMic = (silent = false) => {
-        setListening(false);
-        clearSilence();
-
-        const leftover = finalBuf.trim();
-        if (leftover) {
-            autoSend(leftover);
-            setFinalBuf("");
-        }
-        try {
-            recRef.current && recRef.current.abort();
-        } catch {}
-        if (!silent) beep(600, 0.05, "sine");
-    };
 
     /** ---------------------------
-     *  Push-To-Talk (길게 누르기/Space)
+     *  음성 인식 흐름
      *  --------------------------- */
-    const pttRef = useRef(false);
-
-    const handlePTTDown = () => {
-        pttRef.current = true;
-        startMic(true);
-    };
-    const handlePTTUp = () => {
-        if (pttRef.current) {
-            pttRef.current = false;
-            stopMic();
+    const startListen = () => {
+        if (!recRef.current) {
+            alert("이 브라우저는 음성 인식을 지원하지 않습니다.");
+            return;
+        }
+        try {
+            setPartial("");
+            setFinalText("");
+            setStage("listening");
+            recRef.current.onresult = (e) => {
+                let interim = "";
+                let completed = "";
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    const t = e.results[i][0].transcript;
+                    if (e.results[i].isFinal) completed += t;
+                    else interim += t;
+                }
+                if (interim) setPartial(interim);
+                if (completed) {
+                    setFinalText((prev) => (prev ? prev + " " + completed : completed));
+                }
+            };
+            recRef.current.onend = () => {
+                // 최종 문장이 있으면 확인 단계로
+                if (finalTextRef.current || partialRef.current) {
+                    const take = (finalTextRef.current || partialRef.current || "").trim();
+                    setFinalText(take);
+                    setPartial("");
+                    setStage("confirm");
+                } else {
+                    // 아무 말도 못 들었으면 대기
+                    setStage("idle");
+                }
+            };
+            recRef.current.start();
+        } catch (err) {
+            console.error(err);
+            setStage("idle");
         }
     };
 
-    // Space = PTT, Esc = Stop
-    useEffect(() => {
-        const onKeyDown = (e) => {
-            if (e.code === "Space" && !pttRef.current) {
-                e.preventDefault();
-                handlePTTDown();
-            } else if (e.code === "Escape") {
-                stopMic();
-            }
-        };
-        const onKeyUp = (e) => {
-            if (e.code === "Space") {
-                e.preventDefault();
-                handlePTTUp();
-            }
-        };
-        window.addEventListener("keydown", onKeyDown);
-        window.addEventListener("keyup", onKeyUp);
-        return () => {
-            window.removeEventListener("keydown", onKeyDown);
-            window.removeEventListener("keyup", onKeyUp);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const stopListen = () => {
+        try {
+            recRef.current?.stop();
+        } catch {}
+    };
 
-    /** 간편칩 클릭 */
-    const handleChip = (q) => autoSend(q);
+    // 최신값 참조용 ref
+    const finalTextRef = useRef("");
+    const partialRef = useRef("");
+    useEffect(() => {
+        finalTextRef.current = finalText;
+    }, [finalText]);
+    useEffect(() => {
+        partialRef.current = partial;
+    }, [partial]);
+
+    /** ---------------------------
+     *  백엔드 보내기
+     *  --------------------------- */
+    async function sendToBackend(userText) {
+        // 채팅창에 사용자 발화 추가
+        setMessages((prev) => [
+            ...prev,
+            { id: crypto.randomUUID(), role: "user", text: userText, time: nowTime() },
+        ]);
+        setStage("sending");
+
+        // 타이핑 인디케이터(봇 말풍선 …)
+        const typingId = crypto.randomUUID();
+        setMessages((prev) => [
+            ...prev,
+            { id: typingId, role: "bot", text: "typing__", time: nowTime() },
+        ]);
+
+        // 여러 엔드포인트 시도: /api/chat → /chat
+        const endpoints = [`${API_BASE}/api/chat`, `${API_BASE}/chat`];
+
+        let responseText = "서버와 통신에 실패했어요. 잠시 후 다시 시도해 주세요.";
+        for (const url of endpoints) {
+            try {
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: userText }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // data.answer / data.message 등 유연 처리
+                    responseText = data.answer || data.message || JSON.stringify(data);
+                    break;
+                }
+            } catch (e) {
+                // 다음 후보 URL 시도
+            }
+        }
+
+        // 타이핑 메시지 교체
+        setMessages((prev) =>
+            prev.map((m) => (m.id === typingId ? { ...m, text: responseText } : m))
+        );
+        setStage("idle");
+    }
+
+    /** ---------------------------
+     *  UI 이벤트
+     *  --------------------------- */
+    const onMicClick = () => {
+        if (stage === "listening") {
+            stopListen();
+        } else {
+            startListen();
+        }
+    };
+
+    const onConfirmYes = () => {
+        const text = finalText.trim();
+        setFinalText("");
+        sendToBackend(text);
+    };
+
+    const onConfirmNo = () => {
+        setFinalText("");
+        setPartial("");
+        setStage("idle");
+        // 다시 듣기 원하시면 아래를 다시 실행할 수도 있습니다.
+        // startListen();
+    };
 
     return (
-        <div className="chatbot-page no-top-tab">
+        <div className="chatbot-page">
             {/* 상단 헤더 */}
-            <header className="chat-header">
-                <button
-                    type="button"
-                    className="back-btn"
-                    onClick={() => navigate(-1)}
-                    aria-label="뒤로가기"
-                    title="뒤로가기"
-                >
+            <div className="chat-header">
+                <button className="back-btn" onClick={() => navigate(-1)} aria-label="뒤로가기">
                     ←
                 </button>
-                <div className="chat-title">복지도우미</div>
+                <div className="chat-title">복지 도우미</div>
                 <div className="header-spacer" />
-            </header>
-
-            {/* 빠른질문 칩 */}
-            <div className="chip-row" role="list">
-                {quickChips.map((c) => (
-                    <button
-                        key={c}
-                        role="listitem"
-                        className="chip"
-                        onClick={() => handleChip(c)}
-                        title={c}
-                    >
-                        {c}
-                    </button>
-                ))}
             </div>
 
-            {/* 채팅 영역 */}
-            <div
-                className="chat-area"
-                ref={areaRef}
-                aria-live="polite"
-                aria-label="채팅 메시지"
-            >
+            {/* 대화 영역 */}
+            <div className="chat-content">
                 {messages.map((m) => (
                     <div
                         key={m.id}
-                        className={`chat-bubble ${m.sender === "user" ? "user-bubble" : "bot-bubble"}`}
+                        className={`bubble-row ${m.role === "user" ? "right" : "left"}`}
                     >
-                        <div className="bubble-text">{m.text}</div>
-
-                        {/* 액션들 */}
-                        <div className="bubble-actions">
-                            <button className="icon-btn" onClick={() => handleCopy(m.text)} title="복사">
-                                ⧉
-                            </button>
-                            {m.sender === "bot" && (
-                                <button className="icon-btn" onClick={() => handleSpeak(m.text)} title="읽어주기">
-                                    🔊
-                                </button>
+                        <div className={`bubble-col ${m.role === "bot" ? "is-bot" : "is-user"}`}>
+                            {m.role === "bot" && (
+                                <img className="bot-avatar" src="/images/chatbot.png" alt="챗봇" />
                             )}
-                            <button className="icon-btn" onClick={() => handleDelete(m.id)} title="삭제">
-                                ✕
-                            </button>
+                            <div
+                                className={`bubble ${
+                                    m.role === "user" ? "bubble--user" : "bubble--bot"
+                                }`}
+                            >
+                                {m.text === "typing__" ? (
+                                    <span className="typing-dots">
+                      <i></i><i></i><i></i>
+                    </span>
+                                ) : (
+                                    m.text.split("\n").map((line, i) => <p key={i}>{line}</p>)
+                                )}
+                            </div>
+                            <div className="time">{m.time}</div>
                         </div>
                     </div>
                 ))}
-
-                {/* 실시간 자막 */}
-                {engineActive && (interim || listening) && (
-                    <div className="chat-bubble user-bubble ghost">
-                        {interim || "듣는 중... 멈추면 자동 전송"}
-                    </div>
-                )}
             </div>
 
-            {/* 하단 컨트롤 */}
-            <div className="voice-sheet">
-                {!supported ? (
-                    <p className="warn">
-                        이 브라우저는 음성인식을 지원하지 않습니다. (HTTPS/Chrome·Edge·iOS Safari 권장)
-                    </p>
-                ) : (
-                    <>
-                        {/* 토글 버튼 */}
-                        {listening ? (
-                            <>
-                                <button className="stop-btn" onClick={() => stopMic()}>
-                                    ■ 중지
-                                </button>
-                                <div className="voice-caption">말씀 중… 멈추면 자동 전송됩니다</div>
-                            </>
-                        ) : (
-                            <>
-                                <button
-                                    className="voice-btn"
-                                    onClick={() => startMic()}
-                                    aria-label="음성 인식 시작"
-                                    title="음성 인식 시작"
-                                >
-                                    🎤 시작
-                                </button>
-                                <div className="voice-caption">
-                                    탭하여 마이크 켜기 · 길게 누르면 PTT (Space도 가능)
-                                </div>
-                            </>
+            {/* 마이크 버튼만 표시 (idle) */}
+            {stage === "idle" && (
+                <button
+                    className="floating-mic-btn"
+                    onClick={onMicClick}
+                    aria-label="음성 입력"
+                >
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3Z" stroke="white" strokeWidth="1.8"/>
+                        <path d="M5 11a7 7 0 0 0 14 0" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                        <path d="M12 18v3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                </button>
+            )}
+
+            {/* 모달 박스 표시 (listening/confirm/sending) */}
+            {stage !== "idle" && (
+                <div className="voice-modal" role="dialog" aria-modal="true">
+                    <div className="voice-panel">
+                        {/* 상태 라벨 */}
+                        {stage === "listening" && (
+                            <div className="voice-title">듣고 있어요</div>
+                        )}
+                        {stage === "confirm" && (
+                            <div className="voice-title">음성 질문</div>
+                        )}
+                        {stage === "sending" && (
+                            <div className="voice-title">전송 중…</div>
                         )}
 
-                        {/* PTT 버튼 (모바일 길게 누르기) */}
-                        <button
-                            className="ptt-btn"
-                            onPointerDown={handlePTTDown}
-                            onPointerUp={handlePTTUp}
-                            onPointerCancel={handlePTTUp}
-                            title="길게 누르고 말하기 (PTT)"
-                        >
-                            🎙 길게 누르고 말하기
-                        </button>
-                    </>
-                )}
-            </div>
+                        {/* 내용 */}
+                        <div className="voice-guide">
+                            {stage === "listening" && (
+                                <div className="listen-indicator">
+                                    <span className="bars"><i/><i/><i/><i/></span>
+                                    <span className="listen-text">{partial?.trim() || "듣고 있어요"}</span>
+                                </div>
+                            )}
+                            {stage === "confirm" && (
+                                <div className="confirm-box">
+                                    <div className="confirm-text">{finalText || "…"}</div>
+                                    <div className="confirm-caption">말씀하신 내용이 맞으신가요?</div>
+                                    <div className="confirm-actions">
+                                        <button className="btn btn--ghost" onClick={onConfirmNo}>다시 말하기</button>
+                                        <button className="btn btn--primary" onClick={onConfirmYes}>네</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
