@@ -1,0 +1,291 @@
+/* 화면 전체 레이아웃 */
+.chatbot-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #ffffff;
+}
+
+/* 상단 헤더 */
+.chat-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    height: 56px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+
+}
+.back-btn {
+    min-width: 44px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+}
+.chat-title {
+    flex: 1;
+    text-align: center;
+    font-weight: 700;
+    font-size: 16px;
+}
+.header-spacer { min-width: 44px; }
+
+/* 대화 영역 */
+.chat-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px 120px; /* 하단 음성영역 여백 확보 */
+    background: #fff;
+}
+
+.bubble-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.bubble-col { display: flex; align-items: flex-start; gap: 8px; }
+.bubble-col.is-bot { flex-direction: column; align-items: flex-start; gap: 6px; }
+.bubble-col.is-user { flex-direction: column; align-items: flex-end; gap: 6px; }
+.bot-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #EAEAEA;
+}
+.bubble-row.left { justify-content: flex-start; }
+.bubble-row.right { justify-content: flex-end; }
+
+.bubble {
+    max-width: 78%;
+    padding: 12px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: keep-all;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+.bubble--bot {
+    background: #F5F6F8;
+    color: #222;
+    border-top-left-radius: 6px;
+}
+.bubble--user {
+    background: #8EBB6A; /* 연녹색 말풍선 */
+    color: #fff;
+    border-top-right-radius: 6px;
+}
+.time {
+    font-size: 12px;
+    color: #9aa0a6;
+    padding-top: 4px;
+    min-width: 0;
+}
+.bubble-col.is-bot > .time { text-align: left; align-self: flex-start; }
+.bubble-col.is-user > .time { text-align: right; align-self: flex-end; }
+
+/* 봇 타이핑 ... */
+.typing-dots {
+    display: inline-flex;
+    gap: 4px;
+}
+.typing-dots i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #F5F6F8;
+    display: inline-block;
+    animation: dot 1.2s infinite ease-in-out;
+}
+.typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes dot {
+    0%, 80%, 100% { transform: scale(0.6); opacity: .6; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* 하단 음성 영역 */
+.voice-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;          /* 화면 가로폭 기준 */
+    margin: 0 auto;        /* 중앙 배치 */
+    background: #fff;
+    padding: 14px 16px 24px;
+    box-shadow: 0 -4px 18px rgba(0,0,0,0.08);
+    text-align: center;    /* 텍스트 기본 가운데 정렬 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;   /* 내부 요소 수평 가운데 */
+}
+
+/* 내부 컨텐츠 폭을 다른 화면들과 동일하게 제한 (모바일 기준 420px) */
+.voice-panel > .voice-title,
+.voice-panel > .voice-guide,
+.voice-panel > .confirm-box,
+.voice-panel > .confirm-actions {
+    width: 100%;
+    max-width: 420px;
+}
+.voice-title {
+    width: 100%;
+    max-width: 420px;
+    font-size: 20px;
+    font-weight: 500;     /* 볼드 제거 */
+    line-height: 1.3;
+    margin-bottom: 12px;
+    text-align: left;
+    height: 28px;         /* 높이 고정 */
+    display: flex;
+    align-items: center;  /* "음성 질문"과 "듣고 있어요" 높이 동일 */
+}
+.voice-guide {
+    min-height: 46px;
+    font-size: 14px;
+    color: #666;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 듣는 중 인디케이터 */
+.listen-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center; /* 가운데 정렬 */
+}
+.bars {
+    display: inline-flex;
+    align-items: flex-end;
+    height: 18px;
+    gap: 3px;
+}
+.bars i {
+    width: 3px;
+    height: 8px;
+    background: #95c37a;
+    border-radius: 2px;
+    animation: bar 1s infinite ease-in-out;
+}
+.bars i:nth-child(2) { animation-delay: .1s; }
+.bars i:nth-child(3) { animation-delay: .2s; }
+.bars i:nth-child(4) { animation-delay: .3s; }
+@keyframes bar {
+    0%, 100% { height: 6px; opacity: .7; }
+    50% { height: 18px; opacity: 1; }
+}
+.listen-text { color: #111; }
+
+/* 인식 결과 확인 박스 */
+.confirm-box {
+    background: #fff;
+    border: none;
+    border-radius: 18px;       /* 둥근 모서리 더 크게 */
+    padding: 24px;             /* 내부 패딩 넉넉히 */
+    margin: 0 auto;            /* 가운데 배치 */
+    text-align: center;
+    width: 100%;
+    max-width: 420px;          /* 다른 화면들과 동일한 폭 */
+    box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+}
+.confirm-text {
+    color: #6aa24a;
+    font-weight: 700;
+    margin: 18px 0;
+    position: relative;
+}
+.confirm-text::before,
+.confirm-text::after {
+    content: "";
+    display: block;
+    height: 1px;
+    background: rgba(0,0,0,0.4);
+}
+.confirm-text::before { margin: 0 0 16px; }
+.confirm-text::after { margin: 16px 0 0; }
+.confirm-caption {
+    font-size: 16px;     /* 볼드 제거 및 크기 조정 */
+    font-weight: 500;
+    color: #111;
+    margin-bottom: 16px;
+}
+.confirm-actions {
+    display: flex;
+    gap: 14px;
+    justify-content: center;  /* 버튼 그룹 가운데 정렬 */
+}
+.confirm-actions .btn {
+    flex: 1 1 0;
+    height: 52px;
+    font-size: 16px;
+}
+.btn {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+.btn--ghost { background: #e9e9e9; color: #333; }
+.btn--primary {
+    background: #95c37a;
+    color: #fff;
+}
+
+/* 마이크 큰 버튼 */
+.mic-btn, .floating-mic-btn {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    border: none;
+    background: #95c37a;
+    box-shadow: 0 8px 18px rgba(149,195,122,0.45);
+    display: grid;
+    place-items: center;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .2s;
+}
+.mic-btn:disabled, .floating-mic-btn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+.mic-btn.active, .floating-mic-btn.active {
+    transform: translateX(-50%) scale(1.04);
+    box-shadow: 0 10px 24px rgba(149,195,122,0.55);
+}
+
+/* 모달 오버레이 */
+.voice-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: flex-end; /* 하단 시트처럼 */
+    z-index: 1000;        /* 헤더(z-index:5) 위로 */
+}
+
+/* 모달 안에서는 바텀시트 형태로 표시 */
+.voice-modal .voice-panel {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
