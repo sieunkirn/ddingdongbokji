@@ -38,7 +38,7 @@ export default function ChatbotPage() {
             id: crypto.randomUUID(),
             role: "bot",
             text:
-                '안녕하세요! 복지 도우미 뚱똥이에요. 버튼을 눌러 음성으로 질문해보세요.\n예시: "신청 가능한 복지혜택 알려줘"',
+                '안녕하세요! 복지 도우미 띵동이에요. 버튼을 눌러 음성으로 질문해보세요.\n예시: "신청 가능한 복지혜택 알려줘"',
             time: nowTime(),
         },
     ]);
